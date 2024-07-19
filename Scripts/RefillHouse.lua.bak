@@ -1,0 +1,206 @@
+--[[
+Script criado por JhonnyBn
+Disponibilizado gratuitamente no Discord do ZeroBot
+Caso te ajude e queira fazer uma doacao via pix, agradeco
+Chave: 234e58b2-1748-4d2b-a17c-5cd864158836
+--]]
+
+local hotkey = "shift+w" -- ao apertar essa hotkey ativa o refill
+local delay = 1000 -- delay de 1 segundo (1000 milissegundos) entre acoes
+
+local automatico_por_tempo =  true -- se true ele vai ficar comprando automaticamente a cada X segundos
+local checar_a_cada_segundos = 600 -- checa uma vez por minuto, 60 segundos
+
+local exibir_icones = true -- pra exibir icones deixe true, pra nao ter icones deixe false
+local posicao_dos_icones = { 50, 210 } -- posicao pra exibir os icones na tela, em { X, Y }
+local id_do_icone = 23373 -- ID do item para aparecer de icone no HUD (pra remover so digitar 0)
+local legenda_do_icone = "Refill" -- nome do HUD (para remover so digitar "" (aspas))
+
+Enums.runes = {
+    -- ATK
+    SD = 3155,
+    AVA = 3161,
+    GFB = 3191,
+    THUNDERSTORM = 3202,
+    -- SUPPORT
+    MW = 3180,
+    FIRE_BOMB = 3192
+}
+
+Enums.potions = {
+    -- HP
+    HP = 266,
+    STRONG_HP = 236,
+    GREAT_HP = 239,
+    ULTIMATE_HP = 7643,
+    SUPREME_HP = 23375,
+    -- MP
+    MP = 268,
+    STRONG_MP = 237,
+    GREAT_MP = 238,
+    ULTIMATE_MP = 23373,
+    -- SPIRIT
+    GREAT_SPIRIT = 7642,
+    ULTIMATE_SPIRIT = 23374
+}
+
+Enums.supplies = {
+    -- FOOD
+    BROWN_MUSHROOM = 3725,
+    -- RING
+    DWARVEN_RING = 3097
+}
+
+Enums.distance = {
+    -- ARROWS
+    DIAMOND = 35901,
+    CRYSTALLINE = 15793,
+    SPECTRAL = 35902,
+}
+
+Enums.equipment = {
+    -- VARINHAS EK/RP
+    SWORD = 28552,
+    AXE = 28553,
+    CLUB = 28554,
+    BOW = 28555,
+}
+
+Enums.wands = {
+    -- VARINHAS MS/ED
+    ROD = 28556,
+    WAND = 28557,
+}
+
+supplies = {}
+supplies.runes = {}
+supplies.potions = {}
+supplies.supplies = {}
+supplies.distance = {}
+supplies.equipment = {}
+supplies.wands = {}
+
+
+-- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+--         CONFIGURACOES
+-- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+supplies.potions[Enums.potions.STRONG_MP] = 590
+
+-- Exemplo de configuracao pra comprar usando ID dos itens:
+-- supplies.potions[23375] = 10 -- 10 Supreme HP
+-- supplies.potions[268] = 300 -- 300 MP basica
+-- supplies.runes[3155] = 100 -- 100 SDs
+
+-- Exemplo de configuracao pra comprar usando os Enums:
+-- 300 SD, 80 thunderstorm, 100 ultimate mp, 2 dwarven ring, 150 brown mushroom, 100 diamond arrow, 1 varinha de espada e 1 varinha de druid
+-- supplies.runes[Enums.runes.SD] = 300
+-- supplies.runes[Enums.runes.THUNDERSTORM] = 80
+-- supplies.potions[Enums.potions.ULTIMATE_MP] = 100
+-- supplies.supplies[Enums.supplies.DWARVEN_RING] = 2
+-- supplies.supplies[Enums.supplies.BROWN_MUSHROOM] = 150
+-- supplies.distance[Enums.distance.DIAMOND] = 100
+-- supplies.equipment[Enums.equipment.AXE] = 1
+-- supplies.wands[Enums.wands.ROD] = 1
+
+-- OBS: Voce pode misturar e usar tanto ID quanto Enums, o que achar mais conveniente!
+-- Vc tambem pode adicionar seus proprios Enums pro codigo ficar mais bonito!
+-- Eh soh seguir o padrao de NOME = ID, (tem que ter uma virgula no final)
+
+
+
+
+-- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+--         NAO MEXA ABAIXO
+-- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+-- returns true if there is supplies to buy
+local function needSupplies(supplies)
+    for _, category in ipairs({"runes", "potions", "supplies", "distance", "equipment", "wands"}) do
+        if supplies[category] then
+            local qtItemsInCategory = 0
+            for i, v in pairs(supplies[category]) do
+                qtItemsInCategory = qtItemsInCategory + 1
+            end
+            if qtItemsInCategory > 0 then
+                for id, needed in pairs(supplies[category]) do
+                    local itemCount = Game.getItemCount(id)
+                    local buying_quantity = needed - itemCount
+                    if buying_quantity > 0 then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function buySuppliesFromHireling(supplies, delay)
+    delay = delay or 1000
+    if not needSupplies(supplies) then
+        Client.showMessage("Refill concluido!")
+        return true
+    end
+    Game.talk("hi", Enums.TalkTypes.TALKTYPE_PRIVATE_PN)
+    wait(delay)
+    Game.talk("goods", Enums.TalkTypes.TALKTYPE_PRIVATE_PN)
+    wait(delay)
+    for _, category in ipairs({"runes", "potions", "supplies", "distance", "equipment", "wands"}) do
+        if supplies[category] then
+            local qtItemsInCategory = 0
+            for i, v in pairs(supplies[category]) do
+                qtItemsInCategory = qtItemsInCategory + 1
+            end
+            if qtItemsInCategory > 0 then
+                Game.talk(category, Enums.TalkTypes.TALKTYPE_PRIVATE_PN)
+                wait(delay)
+                for id, needed in pairs(supplies[category]) do
+                    local itemCount = Game.getItemCount(id)
+                    local buying_quantity = needed - itemCount
+                    if buying_quantity > 0 then
+                        Npc.buy(id, buying_quantity, false, false)
+                        wait(delay)
+                    end
+                end
+            end
+        end
+    end
+    Client.showMessage("Refill concluido!")
+    return true
+end
+
+local function buySuppliesFromHirelingNoParams()
+    buySuppliesFromHireling(supplies, delay)
+end
+
+local success, hotkeyModifiers, hotkeyKey = HotkeyManager.parseKeyCombination(hotkey)
+if success then
+    local function OnKeyPressed(key, modifier)
+        if key ~= hotkeyKey or modifier ~= hotkeyModifiers then
+            return
+        end
+        buySuppliesFromHirelingNoParams()
+    end
+    Game.registerEvent(Game.Events.HOTKEY_SHORTCUT_PRESS, OnKeyPressed)
+end
+
+if exibir_icones then
+    if id_do_icone and id_do_icone ~= 0 then
+        local hudIcone = HUD.new(posicao_dos_icones[1], posicao_dos_icones[2], id_do_icone)
+        hudIcone:setDraggable(true)
+        hudIcone:setCallback(buySuppliesFromHirelingNoParams)
+    end
+    if legenda_do_icone then
+        local hudTexto = HUD.new(posicao_dos_icones[1], posicao_dos_icones[2] + 15, legenda_do_icone)
+        hudTexto:setColor(255, 255, 255)
+        hudTexto:setDraggable(true)
+        hudTexto:setCallback(buySuppliesFromHirelingNoParams)
+    end
+end
+
+if automatico_por_tempo then
+    Timer("RefillHouseTempo", function()
+        buySuppliesFromHirelingNoParams()
+    end, checar_a_cada_segundos*1000)
+end
